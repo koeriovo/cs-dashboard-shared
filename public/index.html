@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS Weekly ダッシュボード</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f7f7f5; color: #1a1a18; font-size: 14px; line-height: 1.5; }
+
+.header { background: #fff; border-bottom: 0.5px solid #e4e4e0; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+.header-title { font-size: 14px; font-weight: 600; }
+.header-sub { font-size: 11px; color: #999; margin-top: 1px; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.cs-select { font-size: 12px; font-family: inherit; border: 0.5px solid #d8d8d4; border-radius: 6px; padding: 4px 8px; background: #fff; cursor: pointer; color: #444; }
+.reload-btn { font-size: 12px; color: #555; background: #fff; border: 0.5px solid #d8d8d4; border-radius: 6px; padding: 5px 11px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+.reload-btn:hover { background: #f4f4f0; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 14px 18px 4px; }
+.stat { background: #fff; border-radius: 8px; border: 0.5px solid #e4e4e0; padding: 9px 10px; text-align: center; }
+.stat-num { font-size: 20px; font-weight: 500; }
+.stat-lbl { font-size: 10px; color: #999; margin-top: 1px; }
+
+.progress-wrap { padding: 8px 18px 4px; }
+.progress-bar { height: 3px; background: #e8e8e4; border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; background: #2a7a50; border-radius: 99px; transition: width 0.35s; }
+
+.focus-section { margin: 12px 18px 0; }
+.focus-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #aaa; margin-bottom: 7px; }
+.focus-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.focus-panel { background: #fff; border: 0.5px solid #e4e4e0; border-radius: 10px; padding: 10px 12px; min-height: 80px; }
+.focus-panel-title { font-size: 11px; font-weight: 600; color: #555; margin-bottom: 7px; }
+.focus-item { font-size: 11px; color: #333; padding: 3px 0; border-bottom: 0.5px solid #f0f0ec; display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.focus-item:last-child { border-bottom: none; }
+.focus-item-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.focus-item-badge { font-size: 10px; white-space: nowrap; flex-shrink: 0; }
+.focus-badge-red { color: #993030; font-weight: 600; }
+.focus-badge-orange { color: #8a4f0a; font-weight: 600; }
+.focus-badge-blue { color: #1a5fa5; }
+.focus-badge-green { color: #2a7a50; }
+.focus-empty { font-size: 11px; color: #bbb; padding: 4px 0; }
+
+.cj-section { margin: 10px 18px 0; }
+.cj-timeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.cj-phase { background: #fff; border: 0.5px solid #e4e4e0; border-radius: 8px; padding: 8px 9px; }
+.cj-phase-hdr { display: flex; flex-direction: column; margin-bottom: 5px; }
+.cj-phase-name { font-size: 10px; font-weight: 600; color: #555; }
+.cj-phase-task { font-size: 9px; color: #aaa; margin-top: 1px; }
+.cj-count { font-size: 16px; font-weight: 500; color: #333; }
+.cj-companies { margin-top: 4px; }
+.cj-company { font-size: 10px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.6; }
+.cj-phase.active { border-color: #a8c8f0; background: #f4f9ff; }
+.cj-phase.active .cj-phase-name { color: #1a5fa5; }
+.cj-phase.active .cj-count { color: #1a5fa5; }
+
+.pinned-section { margin: 10px 18px 0; }
+.pinned-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.pinned-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #e8930a; display: flex; align-items: center; gap: 5px; }
+.add-pin-btn { font-size: 11px; color: #999; background: none; border: 0.5px solid #d8d8d4; border-radius: 5px; padding: 2px 8px; cursor: pointer; }
+.add-pin-btn:hover { background: #f4f4f0; }
+.pin-card { background: #fffcf0; border: 0.5px solid #f0d890; border-left: 3px solid #e8930a; border-radius: 8px; padding: 9px 12px; margin-bottom: 5px; display: flex; align-items: flex-start; gap: 9px; }
+.pin-chk { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #d8c060; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; cursor: pointer; background: #fff; transition: all 0.15s; }
+.pin-chk.on { background: #2a7a50; border-color: #2a7a50; }
+.pin-body { flex: 1; min-width: 0; }
+.pin-company { font-size: 11px; font-weight: 600; color: #8a4f0a; margin-bottom: 2px; }
+.pin-text { font-size: 12px; color: #333; line-height: 1.45; }
+.pin-date { font-size: 10px; color: #bbb; margin-top: 2px; }
+.pin-del { font-size: 16px; color: #d0c090; cursor: pointer; padding: 0 2px; flex-shrink: 0; }
+.pin-del:hover { color: #c05040; }
+.pin-add-form { background: #fff; border: 0.5px solid #d8d8d4; border-radius: 8px; padding: 10px 12px; margin-bottom: 5px; }
+.pin-form-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.pin-form-input { flex: 1; font-size: 12px; font-family: inherit; border: 0.5px solid #d0d0cc; border-radius: 5px; padding: 5px 8px; outline: none; background: #f9f9f7; }
+.pin-form-input:focus { border-color: #bbb; background: #fff; }
+.pin-form-input.company { flex: 0 0 100px; }
+.pin-form-textarea { width: 100%; font-size: 12px; font-family: inherit; border: 0.5px solid #d0d0cc; border-radius: 5px; padding: 5px 8px; outline: none; background: #f9f9f7; resize: none; }
+.pin-form-textarea:focus { border-color: #bbb; background: #fff; }
+.pin-form-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
+.btn-save { font-size: 12px; background: #e8930a; color: #fff; border: none; border-radius: 5px; padding: 4px 12px; cursor: pointer; }
+.btn-cancel { font-size: 12px; background: none; color: #999; border: 0.5px solid #d8d8d4; border-radius: 5px; padding: 4px 10px; cursor: pointer; }
+
+.section { padding: 0 18px 20px; }
+.section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #aaa; margin: 14px 0 6px; }
+
+.card { background: #fff; border: 0.5px solid #e4e4e0; border-radius: 10px; padding: 11px 13px; margin-bottom: 6px; display: flex; align-items: flex-start; gap: 11px; cursor: pointer; transition: opacity 0.18s, border-color 0.15s; }
+.card:hover { border-color: #ccc; }
+.card.done { opacity: 0.38; }
+.card.done .card-name { text-decoration: line-through; color: #aaa; }
+.card[data-urgency="high"] { border-left: 3px solid #d94040; }
+.card[data-urgency="waiting"] { border-left: 3px solid #e8930a; }
+.card[data-urgency="active"] { border-left: 3px solid #2a7a50; }
+
+.chk { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #d0d0cc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; transition: all 0.15s; background: #fff; }
+.chk.on { background: #2a7a50; border-color: #2a7a50; }
+.chk svg { opacity: 0; transition: opacity 0.12s; }
+.chk.on svg { opacity: 1; }
+
+.card-body { flex: 1; min-width: 0; }
+.card-name { font-size: 13px; font-weight: 500; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; user-select: none; }
+.tag { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 4px; }
+.tag-red { background: #fce8e8; color: #993030; }
+.tag-orange { background: #fff0e0; color: #8a4f0a; }
+.tag-blue { background: #e4f0fb; color: #1a5fa5; }
+.tag-green { background: #e6f5ee; color: #2a7a50; }
+.tag-gray { background: #f0f0ec; color: #666; }
+.tag-purple { background: #f0eaff; color: #5a3a9a; }
+
+.unpub-info { margin-top: 6px; background: #fff8f0; border: 0.5px solid #f0d4a0; border-left: 3px solid #e8930a; border-radius: 6px; padding: 6px 9px; user-select: none; }
+.unpub-info-high { background: #fff2f2; border-color: #f0b0b0; border-left-color: #d94040; }
+.unpub-title { font-size: 10px; font-weight: 600; color: #8a4f0a; margin-bottom: 3px; }
+.unpub-title.high { color: #993030; }
+.unpub-site { font-size: 11px; color: #555; display: flex; gap: 5px; align-items: baseline; margin-top: 2px; flex-wrap: wrap; }
+.unpub-site-name { font-weight: 500; }
+.unpub-memo { color: #888; font-style: italic; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 160px; }
+.unpub-days { font-size: 10px; color: #bbb; white-space: nowrap; }
+.unpub-publish { font-size: 10px; font-weight: 600; white-space: nowrap; }
+.unpub-publish-urgent { color: #993030; }
+.unpub-publish-soon { color: #8a4f0a; }
+.unpub-publish-ok { color: #2a7a50; }
+
+.ai-insight { margin-top: 8px; background: #fafafa; border: 0.5px solid #e8e8e4; border-radius: 7px; padding: 7px 10px; user-select: none; }
+.ai-insight-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.status-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+.status-red { background: #fce8e8; color: #993030; }
+.status-orange { background: #fff0e0; color: #8a4f0a; }
+.status-blue { background: #e4f0fb; color: #1a5fa5; }
+.status-green { background: #e6f5ee; color: #2a7a50; }
+.status-gray { background: #f0f0ec; color: #666; }
+.ai-reason { font-size: 10px; color: #aaa; }
+.ai-next-action { font-size: 12px; color: #222; font-weight: 500; }
+.ai-done-btn { margin-top: 6px; font-size: 11px; color: #2a7a50; background: #e6f5ee; border: none; border-radius: 5px; padding: 3px 10px; cursor: pointer; }
+.ai-analyzing { margin-top: 8px; font-size: 11px; color: #bbb; display: flex; align-items: center; gap: 5px; user-select: none; }
+.spinner-sm { width: 10px; height: 10px; border: 1.5px solid #e0e0e0; border-top-color: #aaa; border-radius: 50%; animation: spin 0.6s linear infinite; flex-shrink: 0; }
+
+.memo-row { margin-top: 7px; }
+.memo-row-btns { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.memo-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #bbb; cursor: pointer; user-select: none; }
+.memo-toggle:hover { color: #888; }
+.memo-toggle.has-content { color: #6644aa; }
+.memo-preview-text { font-style: italic; max-width: 180px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: inline-block; vertical-align: bottom; }
+.slack-fetch-link { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: #4a9edd; cursor: pointer; user-select: none; }
+.slack-fetch-link:hover { color: #1a5fa5; }
+.slack-input-wrap { margin-top: 6px; display: flex; gap: 5px; align-items: center; }
+.slack-url-field { flex: 1; font-size: 12px; font-family: inherit; border: 0.5px solid #a8c8f0; border-radius: 5px; padding: 5px 8px; outline: none; background: #f0f7ff; color: #333; }
+.slack-url-field:focus { border-color: #4a9edd; background: #fff; }
+.slack-fetch-btn-go { font-size: 11px; background: #4a9edd; color: #fff; border: none; border-radius: 5px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+.slack-fetch-btn-go:hover { background: #2a7abf; }
+.slack-fetch-btn-go:disabled { background: #aaa; cursor: default; }
+.slack-cancel-btn { font-size: 12px; color: #bbb; background: none; border: none; cursor: pointer; padding: 2px; }
+.slack-fetch-status { font-size: 11px; color: #888; margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+.memo-input {
+  display: none; width: 100%; margin-top: 6px; padding: 7px 9px;
+  font-size: 12px; font-family: inherit; color: #333;
+  background: #f9f7ff; border: 0.5px solid #c8b8f0; border-radius: 6px;
+  resize: none; line-height: 1.5; outline: none;
+  cursor: text; user-select: text; -webkit-user-select: text;
+}
+.memo-input:focus { border-color: #9977dd; background: #fff; }
+.notion-link { font-size: 11px; color: #ccc; text-decoration: none; padding-left: 8px; flex-shrink: 0; margin-top: 3px; }
+.notion-link:hover { color: #888; }
+
+.loading { display: flex; align-items: center; justify-content: center; padding: 60px 20px; color: #aaa; font-size: 13px; gap: 8px; flex-direction: column; }
+.loading-sub { font-size: 11px; color: #ccc; }
+.spinner { width: 16px; height: 16px; border: 2px solid #e0e0e0; border-top-color: #888; border-radius: 50%; animation: spin 0.6s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; padding: 48px 20px; color: #aaa; font-size: 13px; }
+.error-box { margin: 16px 18px; padding: 12px 14px; background: #fce8e8; border-radius: 8px; color: #993030; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">CS Weekly ダッシュボード</div>
+    <div class="header-sub" id="hdr-sub">読み込み中...</div>
+  </div>
+  <div class="header-actions">
+    <select class="cs-select" id="cs-select" onchange="reload()">
+      <option value="">👥 全員</option>
+      <option value="3a0983f0-8dc8-4ac6-af37-7d4d5601503b">Erika</option>
+      <!-- 他のCSメンバーはここに追加 (Notion User ID が必要) -->
+    </select>
+    <button class="reload-btn" onclick="reload()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      更新
+    </button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="loading"><div class="spinner"></div>読み込み中...<div class="loading-sub">Notion × 3DB を取得中</div></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// 設定
+// ─────────────────────────────────────────
+const CUSTOMERS_VIEW = 'https://www.notion.so/studiodesign/210e8887325180a6b810f5f4d982a9f0?v=210e8887325180829155000cdcd78fae';
+const UNPUB_VIEW     = 'https://www.notion.so/studiodesign/234e8887325180499a36e347ea4347a2?v=349e888732518073b73b000cab302cff';
+const CJ_VIEW        = 'https://www.notion.so/studiodesign/318e8887325180c7b4b2e2b832623a52?v=31fe88873251800db057000c63d2f02b';
+const TODAY = new Date().toISOString().slice(0, 10);
+
+// ─────────────────────────────────────────
+// API ラッパー (Cowork → サーバーレス関数)
+// ─────────────────────────────────────────
+async function apiNotion(args) {
+  const r = await fetch('/api/notion', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error('Notion error: ' + (data.error || r.statusText));
+  return { structuredContent: data, isError: false };
+}
+
+async function apiSlack(toolSuffix, args) {
+  const action = toolSuffix.includes('thread') ? 'read_thread' : 'read_channel';
+  const r = await fetch('/api/slack', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...args }),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error('Slack error: ' + (data.error || r.statusText));
+  return { structuredContent: data, isError: false };
+}
+
+async function askClaude(prompt, data) {
+  const r = await fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, data }),
+  });
+  const result = await r.json();
+  if (!r.ok) throw new Error('AI error: ' + (result.error || r.statusText));
+  return result.text || '';
+}
+
+// ─────────────────────────────────────────
+// Storage
+// ─────────────────────────────────────────
+function loadChecked()  { try { const s=JSON.parse(localStorage.getItem('cs-checked')||'{}'); return s.date===TODAY?(s.ids||{}):{};} catch{return{};} }
+function saveChecked()  { localStorage.setItem('cs-checked', JSON.stringify({date:TODAY, ids:checked})); }
+function loadMemos()    { try { return JSON.parse(localStorage.getItem('cs-memos')||'{}'); } catch{return{};} }
+function saveMemo(id,v) { if(v) memos[id]=v; else delete memos[id]; localStorage.setItem('cs-memos',JSON.stringify(memos)); }
+function loadInsights() { try { return JSON.parse(localStorage.getItem('cs-insights')||'{}'); } catch{return{};} }
+function saveInsights() { localStorage.setItem('cs-insights', JSON.stringify(insights)); }
+function loadPins()     { try { return JSON.parse(localStorage.getItem('cs-pins')||'[]'); } catch{return[];} }
+function savePins()     { localStorage.setItem('cs-pins', JSON.stringify(pins)); }
+
+let checked  = loadChecked();
+let memos    = loadMemos();
+let insights = loadInsights();
+let pins     = loadPins();
+let allCards = [];
+let unpublishedMap = {};
+let cjMap    = {};
+let memoTimers = {};
+
+// ─────────────────────────────────────────
+// Utils
+// ─────────────────────────────────────────
+function parseArr(val) { if(!val||val==='<omitted />') return []; try{return JSON.parse(val);}catch{return[val];} }
+function daysSince(str) { if(!str) return null; return Math.floor((Date.now()-new Date(str))/86400000); }
+function daysUntil(str) { if(!str) return null; return Math.floor((new Date(str)-Date.now())/86400000); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function extractPageId(url) {
+  if(!url) return null;
+  const m=url.match(/\/p\/([0-9a-f]{32})/i)||url.match(/\/([0-9a-f]{32})(?:[^0-9a-f]|$)/i);
+  return m?m[1].toLowerCase():null;
+}
+
+// ─────────────────────────────────────────
+// CJ Phase
+// ─────────────────────────────────────────
+const CJ_PHASES = [
+  {n:1, label:'1ヶ月',    task:null,          maxDays:30,  color:'blue'},
+  {n:2, label:'2ヶ月',    task:null,          maxDays:60,  color:'blue'},
+  {n:3, label:'3ヶ月',    task:'CSAT実施',     maxDays:90,  color:'green'},
+  {n:4, label:'4–6ヶ月', task:'miniBR/NPS',  maxDays:180, color:'orange'},
+  {n:5, label:'6–12ヶ月',task:'NPS/BR',       maxDays:365, color:'orange'},
+];
+function getCJPhase(contractDate) {
+  if(!contractDate) return null;
+  const d=daysSince(contractDate);
+  if(d===null||d<0) return null;
+  for(const p of CJ_PHASES) { if(d<=p.maxDays) return {...p,days:d}; }
+  return null;
+}
+
+function priority(c) {
+  const ins=insights[c.url];
+  if(ins&&ins.urgency==='high') return -1;
+  const stage=parseArr(c['Stage']).join('|');
+  if(stage.includes('Risk / At Risk')) return 0;
+  const pid=extractPageId(c.url);
+  const unpub=pid?unpublishedMap[pid]:null;
+  if(unpub&&unpub.some(s=>s.isHighRisk)) return 0;
+  const days=daysSince(c['date:最終会話日:start']);
+  const created=daysSince(c['作成日時']);
+  if(stage.includes('オンボーディング期間')&&(created!==null&&created<=90)&&(days===null||days>7)) return 1;
+  if(unpub&&unpub.length>0) return 2;
+  if(days===null||days>30) return 2;
+  return 3;
+}
+
+// ─────────────────────────────────────────
+// Data loading
+// ─────────────────────────────────────────
+async function loadUnpublishedSites() {
+  const map={};
+  let cursor=null, total=0;
+  try {
+    do {
+      const args={view_url:UNPUB_VIEW, page_size:100};
+      if(cursor) args.start_cursor=cursor;
+      const r=await apiNotion(args);
+      if(r.isError) break;
+      const data=r.structuredContent;
+      for(const site of (data.results||[])) {
+        const companyUrls=parseArr(site['企業名']||'');
+        for(const cu of companyUrls) {
+          const pid=extractPageId(cu);
+          if(!pid) continue;
+          if(!map[pid]) map[pid]=[];
+          const publishDate=site['date:公開予定日:start']||'';
+          map[pid].push({
+            siteName:     site['name']||'（名称不明）',
+            memo:         site['memo']||'',
+            createdAt:    site['date:created_at:start']||'',
+            publishDate,
+            isHighRisk:   site['Risk']==='__YES__',
+            daysSinceCreated: daysSince(site['date:created_at:start']),
+            daysUntilPublish: publishDate?daysUntil(publishDate):null,
+          });
+        }
+        total++;
+      }
+      cursor=data.has_more?data.next_cursor:null;
+    } while(cursor&&total<500);
+  } catch(e){console.warn('未公開DB取得エラー:',e);}
+  return map;
+}
+
+async function loadCJTasks() {
+  const map={};
+  let cursor=null, total=0;
+  try {
+    do {
+      const args={view_url:CJ_VIEW, page_size:100};
+      if(cursor) args.start_cursor=cursor;
+      const r=await apiNotion(args);
+      if(r.isError) break;
+      const data=r.structuredContent;
+      for(const row of (data.results||[])) {
+        const custUrls=parseArr(row['Enterprise Customers']||'');
+        const contractDate=row['date:日付:start']||'';
+        for(const cu of custUrls) {
+          const pid=extractPageId(cu);
+          if(pid) map[pid]={contractDate, progress:row['進捗']||''};
+        }
+        total++;
+      }
+      cursor=data.has_more?data.next_cursor:null;
+    } while(cursor&&total<500);
+  } catch(e){console.warn('CJタスクDB取得エラー:',e);}
+  return map;
+}
+
+// ─────────────────────────────────────────
+// Slack
+// ─────────────────────────────────────────
+function parseSlackUrl(url) {
+  const match=url.trim().match(/archives\/(C[A-Z0-9]+)(?:\/p(\d+))?/);
+  if(!match) return null;
+  const channelId=match[1];
+  if(match[2]){
+    const digits=match[2];
+    const ts=digits.slice(0,10)+'.'+(digits.slice(10)||'000000').padEnd(6,'0');
+    return {channelId,messageTs:ts,isThread:true};
+  }
+  return {channelId,isThread:false};
+}
+
+async function fetchAndFillSlack(eid, slackUrl) {
+  const id=decodeURIComponent(eid);
+  const parsed=parseSlackUrl(slackUrl);
+  if(!parsed) throw new Error('Slack URLの形式が正しくありません');
+  let rawData;
+  if(parsed.isThread){
+    const r=await apiSlack('slack_read_thread',{channel_id:parsed.channelId,message_ts:parsed.messageTs,limit:50});
+    if(r.isError) throw new Error('Slackスレッドの読み込みに失敗しました');
+    rawData=r.structuredContent;
+  } else {
+    const r=await apiSlack('slack_read_channel',{channel_id:parsed.channelId,limit:25});
+    if(r.isError) throw new Error('Slackチャンネルの読み込みに失敗しました');
+    rawData=r.structuredContent;
+  }
+  const messages=Array.isArray(rawData)?rawData:(rawData.messages||rawData.replies||rawData);
+  const memoText=await askClaude(
+    `以下はSlackの会話履歴です。CSとして重要な情報を抽出し、簡潔なメモを作成してください（4〜6行）。形式：日付付き箇条書き。含める内容：最終接触日と内容、未回答の依頼・質問（★マーク）、現状、次のアクション。余分な説明不要。`,
+    messages
+  );
+  const memoStr=typeof memoText==='string'?memoText.trim():JSON.stringify(memoText);
+  saveMemo(id,memoStr);
+  const ta=document.querySelector(`textarea[data-memo-id="${eid}"]`);
+  if(ta){ta.value=memoStr; ta.style.display='block';}
+  const toggle=document.querySelector(`[data-memo-toggle="${eid}"]`);
+  if(toggle){toggle.className='memo-toggle has-content'; toggle.innerHTML=`${pencilSvg}<span class="memo-preview-text">${escHtml(memoStr)}</span>`;}
+  if(insights[id]){delete insights[id]; saveInsights();}
+  const slot=document.querySelector(`[data-insight-slot="${eid}"]`);
+  if(slot) slot.outerHTML=insightHtml(id,true);
+  setTimeout(()=>analyzeMemos(allCards),300);
+}
+
+function toggleSlackInput(eid){
+  const wrap=document.querySelector(`[data-slack-wrap="${eid}"]`);
+  if(!wrap) return;
+  const isOpen=wrap.style.display==='flex';
+  wrap.style.display=isOpen?'none':'flex';
+  if(!isOpen){const f=wrap.querySelector('.slack-url-field'); if(f){f.value='';f.focus();}}
+}
+
+async function doSlackFetch(eid){
+  const wrap=document.querySelector(`[data-slack-wrap="${eid}"]`);
+  const field=wrap?.querySelector('.slack-url-field');
+  const btn=wrap?.querySelector('.slack-fetch-btn-go');
+  if(!field?.value||!btn) return;
+  btn.textContent='読み込み中...'; btn.disabled=true;
+  let statusEl=wrap.parentElement?.querySelector('.slack-fetch-status');
+  if(!statusEl){statusEl=document.createElement('div'); statusEl.className='slack-fetch-status'; wrap.parentElement.appendChild(statusEl);}
+  statusEl.innerHTML=`<div class="spinner-sm"></div>Slackを読み込んでメモを生成中...`;
+  try {
+    await fetchAndFillSlack(eid,field.value);
+    statusEl.innerHTML=`<span style="color:#2a7a50">✓ メモを自動入力しました</span>`;
+    wrap.style.display='none'; btn.textContent='取得'; btn.disabled=false;
+    setTimeout(()=>statusEl.remove(),3000);
+  } catch(e){
+    statusEl.innerHTML=`<span style="color:#993030">⚠ ${escHtml(e.message)}</span>`;
+    btn.textContent='取得'; btn.disabled=false;
+  }
+}
+
+function onSlackFieldKeydown(e,eid){if(e.key==='Enter'){e.preventDefault();doSlackFetch(eid);}}
+
+// ─────────────────────────────────────────
+// AI Analysis
+// ─────────────────────────────────────────
+const pencilSvg=`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+const slackSvg=`<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>`;
+
+function insightHtml(id,hasMemo){
+  if(!hasMemo) return '';
+  const ins=insights[id];
+  if(!ins) return `<div class="ai-analyzing" data-insight-slot="${encodeURIComponent(id)}"><div class="spinner-sm"></div>分析中...</div>`;
+  const colorCls=`status-${ins.statusColor||'gray'}`;
+  const doneBtn=(ins.status==='完了'&&!checked[id])?`<button class="ai-done-btn" onclick="markDone(event,'${encodeURIComponent(id)}')">✓ 完了済みにする</button>`:'';
+  return `<div class="ai-insight" data-insight-slot="${encodeURIComponent(id)}">
+    <div class="ai-insight-top"><span class="status-badge ${colorCls}">${escHtml(ins.status)}</span><span class="ai-reason">${escHtml(ins.reason||'')}</span></div>
+    <div class="ai-next-action">→ ${escHtml(ins.nextAction||'')}</div>${doneBtn}
+  </div>`;
+}
+
+async function analyzeMemos(customers){
+  const withMemos=customers.filter(c=>{const m=memos[c.url]; if(!m) return false; const ca=insights[c.url]; return !(ca&&ca.analyzedMemo===m);});
+  if(!withMemos.length) return;
+  const memoData=withMemos.map(c=>({id:c.url,name:c['顧客名']||'不明',stage:parseArr(c['Stage']).join(', '),memo:memos[c.url]}));
+  try {
+    const result=await askClaude(
+      `CSメモを読み、各顧客の状況と次のアクションを判断。JSONのみ返す：[{"id":"URL","status":"要対応|返信待ち|進行中|完了|様子見","statusColor":"red|orange|blue|green|gray","urgency":"high|waiting|active|done|low","nextAction":"25字以内","reason":"15字以内"}]
+基準: 要対応(red,high)=未回答依頼あり / 返信待ち(orange,waiting)=送信済み待ち / 進行中(blue,active)=作業進行中 / 完了(green,done)=タスク完了 / 様子見(gray,low)=緊急なし`,
+      memoData
+    );
+    let parsed=[];
+    try{const t=typeof result==='string'?result:JSON.stringify(result); const m=t.match(/\[[\s\S]*\]/); if(m) parsed=JSON.parse(m[0]);}catch{}
+    parsed.forEach(item=>{if(item.id) insights[item.id]={...item,analyzedMemo:memos[item.id]};});
+    saveInsights();
+    parsed.forEach(item=>{
+      if(!item.id) return;
+      const eid=encodeURIComponent(item.id);
+      const card=document.querySelector(`.card[data-id="${eid}"]`);
+      if(!card) return;
+      card.dataset.urgency=item.urgency||'low';
+      const slot=card.querySelector('[data-insight-slot]');
+      if(slot) slot.outerHTML=insightHtml(item.id,true);
+    });
+  } catch(e){console.error('AI分析エラー:',e);}
+}
+
+// ─────────────────────────────────────────
+// Render helpers
+// ─────────────────────────────────────────
+function buildUnpubInfo(pid){
+  const sites=unpublishedMap[pid];
+  if(!sites||!sites.length) return '';
+  const hasHighRisk=sites.some(s=>s.isHighRisk);
+  const title=hasHighRisk?'⚠️ 未公開サイトあり（要対応）':'⏳ 未公開サイトあり';
+  const cls=hasHighRisk?'unpub-info unpub-info-high':'unpub-info';
+  const titleCls=hasHighRisk?'unpub-title high':'unpub-title';
+  const sitesHtml=sites.slice(0,3).map(s=>{
+    const dStr=s.daysSinceCreated!==null?`${s.daysSinceCreated}日経過`:'';
+    let pubStr='';
+    if(s.daysUntilPublish!==null){
+      if(s.daysUntilPublish<0) pubStr=`<span class="unpub-publish unpub-publish-urgent">期限超過${Math.abs(s.daysUntilPublish)}日</span>`;
+      else if(s.daysUntilPublish<=7) pubStr=`<span class="unpub-publish unpub-publish-urgent">公開まで${s.daysUntilPublish}日 🔥</span>`;
+      else if(s.daysUntilPublish<=14) pubStr=`<span class="unpub-publish unpub-publish-soon">公開まで${s.daysUntilPublish}日</span>`;
+      else pubStr=`<span class="unpub-publish unpub-publish-ok">公開予定${s.publishDate}</span>`;
+    }
+    return `<div class="unpub-site"><span class="unpub-site-name">${escHtml(s.siteName)}</span>${s.memo?`<span class="unpub-memo">${escHtml(s.memo)}</span>`:''} ${dStr?`<span class="unpub-days">${dStr}</span>`:''} ${pubStr}</div>`;
+  }).join('');
+  return `<div class="${cls}"><div class="${titleCls}">${title}（${sites.length}件）</div>${sitesHtml}</div>`;
+}
+
+function buildCard(c){
+  const id=c.url; const eid=encodeURIComponent(id);
+  const isDone=!!checked[id];
+  const name=c['顧客名']||'（名称未取得）';
+  const stages=parseArr(c['Stage']);
+  const days=daysSince(c['date:最終会話日:start']);
+  const created=daysSince(c['作成日時']);
+  const slack=c['Slack']||'';
+  const memo=memos[id]||'';
+  const ins=insights[id];
+  const pid=extractPageId(id);
+  const unpub=pid?unpublishedMap[pid]:null;
+  const cjEntry=pid?cjMap[pid]:null;
+  const cjPhase=cjEntry?getCJPhase(cjEntry.contractDate):null;
+  const csat=c['CSAT（初回）']||'';
+  const priceRisk=c['新価格｜案内リスク']||'';
+
+  let tags='';
+  stages.forEach(s=>{
+    const cls=s.includes('Risk')?'tag-red':s.includes('オンボーディング')?'tag-blue':s.includes('アダプション')?'tag-green':'tag-gray';
+    tags+=`<span class="tag ${cls}">${escHtml(s)}</span>`;
+  });
+  if(days!==null){const cls=days>30?'tag-red':days>14?'tag-orange':'tag-gray'; tags+=`<span class="tag ${cls}">${days}日前接触</span>`;}
+  else if(created!==null) tags+=`<span class="tag tag-orange">未接触 ${created}日経過</span>`;
+  if(slack==='連携完了') tags+=`<span class="tag tag-green">Slack</span>`;
+  if(unpub){const hr=unpub.some(s=>s.isHighRisk); tags+=`<span class="tag ${hr?'tag-red':'tag-orange'}">未公開 ${unpub.length}件</span>`;}
+  if(cjPhase){const tagCls=cjPhase.color==='blue'?'tag-blue':cjPhase.color==='green'?'tag-green':cjPhase.color==='orange'?'tag-orange':'tag-gray'; const taskStr=cjPhase.task?` · ${cjPhase.task}`:''; tags+=`<span class="tag tag-purple">CJ ${cjPhase.label}${taskStr}</span>`;}
+  if(csat==='要配布') tags+=`<span class="tag tag-orange">CSAT要配布</span>`;
+  if(priceRisk==='要注意') tags+=`<span class="tag tag-red">新価格要注意</span>`;
+  else if(priceRisk==='注意') tags+=`<span class="tag tag-orange">新価格注意</span>`;
+
+  const memoToggleHtml=memo
+    ?`<div class="memo-toggle has-content" data-memo-toggle="${eid}">${pencilSvg}<span class="memo-preview-text">${escHtml(memo)}</span></div>`
+    :`<div class="memo-toggle" data-memo-toggle="${eid}">${pencilSvg}<span>メモ</span></div>`;
+
+  return `
+    <div class="card${isDone?' done':''}" data-id="${eid}" data-urgency="${ins?ins.urgency:''}">
+      <div class="chk${isDone?' on':''}"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,6.5 5,9.5 10,3"/></svg></div>
+      <div class="card-body">
+        <div class="card-name">${escHtml(name)}</div>
+        <div class="tags">${tags}</div>
+        ${buildUnpubInfo(pid)}
+        ${insightHtml(id,!!memo)}
+        <div class="memo-row">
+          <div class="memo-row-btns">
+            ${memoToggleHtml}
+            <span class="slack-fetch-link" onclick="toggleSlackInput('${eid}')">${slackSvg}Slackから取得</span>
+          </div>
+          <div class="slack-input-wrap" data-slack-wrap="${eid}" style="display:none">
+            <input class="slack-url-field" type="url" placeholder="Slack URL（チャンネルまたはスレッド）" onkeydown="onSlackFieldKeydown(event,'${eid}')"/>
+            <button class="slack-fetch-btn-go" onclick="doSlackFetch('${eid}')">取得</button>
+            <button class="slack-cancel-btn" onclick="toggleSlackInput('${eid}')">×</button>
+          </div>
+          <textarea class="memo-input" data-memo-id="${eid}" placeholder="Slackのやりとり・状況・次のアクションなど" rows="3">${escHtml(memo)}</textarea>
+        </div>
+      </div>
+      <a class="notion-link" href="${escHtml(id)}" target="_blank">→</a>
+    </div>`;
+}
+
+function buildWeeklyFocus(customers){
+  const upcomingPubs=[];
+  customers.forEach(c=>{
+    const pid=extractPageId(c.url);
+    const sites=pid?unpublishedMap[pid]:null;
+    if(!sites) return;
+    sites.forEach(s=>{ if(s.daysUntilPublish!==null&&s.daysUntilPublish<=14) upcomingPubs.push({name:c['顧客名']||'',site:s.siteName,days:s.daysUntilPublish}); });
+  });
+  upcomingPubs.sort((a,b)=>a.days-b.days);
+
+  const panel1=upcomingPubs.length
+    ?upcomingPubs.slice(0,4).map(p=>{const cls=p.days<=3?'focus-badge-red':p.days<=7?'focus-badge-orange':'focus-badge-blue'; const str=p.days<0?`${Math.abs(p.days)}日超過`:p.days===0?'今日':`残${p.days}日`; return `<div class="focus-item"><span class="focus-item-name">${escHtml(p.name)}</span><span class="focus-item-badge ${cls}">${str}</span></div>`;}).join('')
+    :'<div class="focus-empty">今後2週間の予定なし</div>';
+
+  const cjActive=customers.filter(c=>{const pid=extractPageId(c.url); const e=pid?cjMap[pid]:null; if(!e) return false; const ph=getCJPhase(e.contractDate); return ph&&ph.n<=3;});
+  const panel2=cjActive.length
+    ?cjActive.slice(0,4).map(c=>{const pid=extractPageId(c.url); const ph=getCJPhase(cjMap[pid].contractDate); const ts=ph.task?` → ${ph.task}`:''; const cls=ph.n===3?'focus-badge-orange':'focus-badge-blue'; return `<div class="focus-item"><span class="focus-item-name">${escHtml(c['顧客名']||'')}</span><span class="focus-item-badge ${cls}">${ph.label}${ts}</span></div>`;}).join('')
+    :'<div class="focus-empty">アクティブなCJフェーズなし</div>';
+
+  const needsFollowup=customers.filter(c=>{const days=daysSince(c['date:最終会話日:start']); const csat=c['CSAT（初回）']||''; const pr=c['新価格｜案内リスク']||''; return csat==='要配布'||(days!==null&&days>30)||pr==='要注意';});
+  const panel3=needsFollowup.length
+    ?needsFollowup.slice(0,4).map(c=>{const days=daysSince(c['date:最終会話日:start']); const csat=c['CSAT（初回）']||''; const pr=c['新価格｜案内リスク']||''; let reason='',cls='focus-badge-orange'; if(csat==='要配布'){reason='CSAT要配布';}else if(pr==='要注意'){reason='新価格要注意';cls='focus-badge-red';}else if(days!==null&&days>30){reason=`${days}日未接触`;cls=days>60?'focus-badge-red':'focus-badge-orange';} return `<div class="focus-item"><span class="focus-item-name">${escHtml(c['顧客名']||'')}</span><span class="focus-item-badge ${cls}">${reason}</span></div>`;}).join('')
+    :'<div class="focus-empty">要対応なし 👍</div>';
+
+  return `<div class="focus-section"><div class="focus-label">📋 今週のフォーカス</div><div class="focus-grid"><div class="focus-panel"><div class="focus-panel-title">📅 公開予定（2週間以内）</div>${panel1}</div><div class="focus-panel"><div class="focus-panel-title">🎯 CJマイルストーン（1–3ヶ月）</div>${panel2}</div><div class="focus-panel"><div class="focus-panel-title">⚠️ 要フォロー</div>${panel3}</div></div></div>`;
+}
+
+function buildCJTimeline(customers){
+  const phaseGroups={1:[],2:[],3:[],4:[],5:[]};
+  customers.forEach(c=>{const pid=extractPageId(c.url); const e=pid?cjMap[pid]:null; if(!e) return; const ph=getCJPhase(e.contractDate); if(ph&&ph.n>=1&&ph.n<=5) phaseGroups[ph.n].push(c['顧客名']||'');});
+  const totalCJ=Object.values(phaseGroups).reduce((s,a)=>s+a.length,0);
+  if(!totalCJ) return '';
+  const cols=CJ_PHASES.map(p=>{const companies=phaseGroups[p.n]; const isActive=companies.length>0; const taskHtml=p.task?`<div class="cj-phase-task">${p.task}</div>`:''; const compHtml=companies.slice(0,3).map(n=>`<div class="cj-company">${escHtml(n)}</div>`).join('')+(companies.length>3?`<div class="cj-company" style="color:#aaa">+${companies.length-3}社</div>`:''); return `<div class="cj-phase${isActive?' active':''}"><div class="cj-phase-hdr"><span class="cj-phase-name">${p.label}</span>${taskHtml}</div><div class="cj-count">${companies.length}</div><div class="cj-companies">${compHtml}</div></div>`;}).join('');
+  return `<div class="cj-section"><div class="focus-label" style="margin-bottom:7px">📈 カスタマージャーニー フェーズ</div><div class="cj-timeline">${cols}</div></div>`;
+}
+
+// ─────────────────────────────────────────
+// Pins
+// ─────────────────────────────────────────
+function renderPins(){
+  const container=document.getElementById('pinned-container');
+  if(!container) return;
+  const all=[...pins.filter(p=>!p.done),...pins.filter(p=>p.done)];
+  if(!all.length){container.innerHTML=''; return;}
+  container.innerHTML=all.map(p=>{const eid=encodeURIComponent(p.id); return `<div class="pin-card" style="${p.done?'opacity:0.4':''}"><div class="pin-chk${p.done?' on':''}" onclick="togglePin('${eid}')"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:${p.done?1:0}"><polyline points="2,6.5 5,9.5 10,3"/></svg></div><div class="pin-body">${p.company?`<div class="pin-company">📎 ${escHtml(p.company)}</div>`:''}<div class="pin-text">${escHtml(p.text)}</div><div class="pin-date">${escHtml(p.createdAt)}</div></div><span class="pin-del" onclick="deletePin('${eid}')">×</span></div>`;}).join('');
+}
+function togglePin(eid){const id=decodeURIComponent(eid); const pin=pins.find(p=>p.id===id); if(pin){pin.done=!pin.done;savePins();renderPins();}}
+function deletePin(eid){pins=pins.filter(p=>p.id!==decodeURIComponent(eid)); savePins(); renderPins(); const s=document.getElementById('pinned-section'); if(s) s.style.display=pins.length?'':'none';}
+function showAddPinForm(){
+  const c=document.getElementById('pinned-container');
+  if(document.getElementById('pin-form')) return;
+  const f=document.createElement('div'); f.className='pin-add-form'; f.id='pin-form';
+  f.innerHTML=`<div class="pin-form-row"><input class="pin-form-input company" id="pin-company" placeholder="会社名"><input class="pin-form-input" id="pin-due" placeholder="期限（任意）"></div><textarea class="pin-form-textarea" id="pin-text" placeholder="タスク内容" rows="2"></textarea><div class="pin-form-actions"><button class="btn-cancel" onclick="cancelPin()">キャンセル</button><button class="btn-save" onclick="savePin()">追加</button></div>`;
+  c.insertBefore(f,c.firstChild); document.getElementById('pin-text').focus();
+  document.getElementById('add-pin-btn').style.display='none';
+}
+function cancelPin(){document.getElementById('pin-form')?.remove(); const b=document.getElementById('add-pin-btn'); if(b) b.style.display='';}
+function savePin(){
+  const company=document.getElementById('pin-company')?.value.trim()||'';
+  const due=document.getElementById('pin-due')?.value.trim()||'';
+  const text=document.getElementById('pin-text')?.value.trim()||'';
+  if(!text){cancelPin();return;}
+  pins.unshift({id:'pin-'+Date.now(),company,text,createdAt:due||TODAY,done:false});
+  savePins(); cancelPin();
+  const s=document.getElementById('pinned-section'); if(s) s.style.display='';
+  renderPins();
+}
+
+function markDone(e,eid){
+  e.stopPropagation();
+  const id=decodeURIComponent(eid);
+  checked[id]=true; saveChecked();
+  const card=document.querySelector(`.card[data-id="${eid}"]`);
+  if(card){card.classList.add('done'); card.querySelector('.chk').classList.add('on');}
+  updateStats();
+}
+function updateStats(){
+  const doneCount=allCards.filter(c=>!!checked[c.url]).length;
+  const el=document.getElementById('stat-done'); if(el) el.textContent=doneCount;
+  const fill=document.querySelector('.progress-fill');
+  if(fill) fill.style.width=(allCards.length?Math.round(doneCount/allCards.length*100):0)+'%';
+}
+
+// ─────────────────────────────────────────
+// Render
+// ─────────────────────────────────────────
+function render(customers){
+  const app=document.getElementById('app');
+  if(!customers.length){app.innerHTML='<div class="empty">担当顧客が見つかりませんでした</div>'; return;}
+
+  allCards=[...customers].sort((a,b)=>priority(a)-priority(b));
+  const secs=[
+    {label:'🔴 要対応（メモより）',items:[]},
+    {label:'⚠️ 要注意（At Risk / 未公開リスク）',items:[]},
+    {label:'🆕 新規オンボーディング（90日以内）',items:[]},
+    {label:'📆 長期未接触・未公開（30日以上）',items:[]},
+    {label:'通常フォロー',items:[]},
+  ];
+  allCards.forEach(c=>{const p=priority(c); secs[p===-1?0:p===0?1:p===1?2:p===2?3:4].items.push(c);});
+
+  const total=customers.length;
+  const atRisk=secs[1].items.length;
+  const doneCount=allCards.filter(c=>!!checked[c.url]).length;
+  const unpubCount=customers.filter(c=>{const pid=extractPageId(c.url); return pid&&unpublishedMap[pid];}).length;
+
+  const csLabel=document.getElementById('cs-select')?.selectedOptions[0]?.text||'';
+  document.getElementById('hdr-sub').textContent=TODAY+(csLabel&&csLabel!=='👥 全員'?` · ${csLabel}`:``)+ ` · ${total}社担当`;
+
+  let html=`
+    <div class="stats">
+      <div class="stat"><div class="stat-num">${total}</div><div class="stat-lbl">担当社数</div></div>
+      <div class="stat"><div class="stat-num" style="color:#993030">${atRisk}</div><div class="stat-lbl">At Risk</div></div>
+      <div class="stat"><div class="stat-num" style="color:#e8930a">${unpubCount}</div><div class="stat-lbl">未公開あり</div></div>
+      <div class="stat"><div class="stat-num" style="color:#2a7a50" id="stat-done">${doneCount}</div><div class="stat-lbl">完了</div></div>
+    </div>
+    <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:${total?Math.round(doneCount/total*100):0}%"></div></div></div>
+    ${buildWeeklyFocus(customers)}
+    ${buildCJTimeline(customers)}
+    <div class="pinned-section" id="pinned-section" style="${pins.length?'':'display:none'}">
+      <div class="pinned-header">
+        <span class="pinned-label">📌 ピン留めタスク${pins.filter(p=>!p.done).length>0?' · '+pins.filter(p=>!p.done).length+'件':''}</span>
+        <button class="add-pin-btn" id="add-pin-btn" onclick="showAddPinForm()">+ 追加</button>
+      </div>
+      <div id="pinned-container"></div>
+    </div>
+    <div style="padding:4px 18px 0" id="pin-add-btn-wrap">
+      <button class="add-pin-btn" onclick="showPinnedFromBtn()" style="color:#e8930a;border-color:#f0d890;margin-top:8px">📌 タスクをピン留め</button>
+    </div>
+    <div class="section">`;
+
+  secs.forEach(s=>{
+    if(!s.items.length) return;
+    html+=`<div class="section-label">${s.label}</div>`;
+    s.items.forEach(c=>{html+=buildCard(c);});
+  });
+  html+='</div>';
+  app.innerHTML=html;
+  renderPins();
+  if(pins.length){document.getElementById('pinned-section').style.display=''; document.getElementById('pin-add-btn-wrap').style.display='none';}
+
+  app.addEventListener('click',e=>{
+    const toggle=e.target.closest('[data-memo-toggle]');
+    if(toggle){const eid=toggle.dataset.memoToggle; const ta=app.querySelector(`textarea[data-memo-id="${eid}"]`); if(ta){const o=ta.style.display==='block'; ta.style.display=o?'none':'block'; if(!o) setTimeout(()=>{ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length);},10);} return;}
+    if(e.target.closest('.memo-row')) return;
+    if(e.target.closest('.ai-insight')) return;
+    if(e.target.closest('.unpub-info')) return;
+    if(e.target.closest('.notion-link')) return;
+    if(e.target.closest('.pinned-section')) return;
+    if(e.target.closest('#pin-add-btn-wrap')) return;
+    if(e.target.closest('.focus-section')) return;
+    if(e.target.closest('.cj-section')) return;
+    const card=e.target.closest('.card');
+    if(!card) return;
+    const id=decodeURIComponent(card.dataset.id);
+    checked[id]=!checked[id]; saveChecked();
+    card.classList.toggle('done',!!checked[id]);
+    card.querySelector('.chk').classList.toggle('on',!!checked[id]);
+    updateStats();
+  });
+
+  app.addEventListener('input',e=>{
+    const ta=e.target.closest('textarea[data-memo-id]');
+    if(!ta) return;
+    const eid=ta.dataset.memoId; const id=decodeURIComponent(eid);
+    clearTimeout(memoTimers[eid]);
+    memoTimers[eid]=setTimeout(()=>{
+      saveMemo(id,ta.value);
+      const toggle=app.querySelector(`[data-memo-toggle="${eid}"]`);
+      if(toggle){if(ta.value){toggle.className='memo-toggle has-content'; toggle.innerHTML=`${pencilSvg}<span class="memo-preview-text">${escHtml(ta.value)}</span>`;}else{toggle.className='memo-toggle'; toggle.innerHTML=`${pencilSvg}<span>メモ</span>`;}}
+      if(insights[id]){delete insights[id]; saveInsights();}
+      const slot=app.querySelector(`[data-insight-slot="${encodeURIComponent(id)}"]`);
+      if(slot&&ta.value) slot.outerHTML=insightHtml(id,true);
+      clearTimeout(memoTimers[eid+'_a']);
+      memoTimers[eid+'_a']=setTimeout(()=>analyzeMemos(allCards),1500);
+    },600);
+  });
+
+  analyzeMemos(customers);
+}
+
+function showPinnedFromBtn(){const s=document.getElementById('pinned-section'); if(s) s.style.display=''; const w=document.getElementById('pin-add-btn-wrap'); if(w) w.style.display='none'; showAddPinForm();}
+
+// ─────────────────────────────────────────
+// Load
+// ─────────────────────────────────────────
+async function load(){
+  document.getElementById('app').innerHTML='<div class="loading"><div class="spinner"></div>読み込み中...<div class="loading-sub">Notion × 3DB を取得中</div></div>';
+  const filterCsId=document.getElementById('cs-select')?.value||'';
+  try {
+    const [customersData, unpubData, cjData]=await Promise.all([
+      (async()=>{
+        let results=[],cursor=null;
+        do {
+          const args={view_url:CUSTOMERS_VIEW,page_size:100};
+          if(cursor) args.start_cursor=cursor;
+          const r=await apiNotion(args);
+          if(r.isError) throw new Error('Notion APIエラー（顧客DB）');
+          const data=r.structuredContent;
+          results=results.concat(data.results||[]);
+          cursor=data.has_more?data.next_cursor:null;
+        } while(cursor);
+        return results;
+      })(),
+      loadUnpublishedSites(),
+      loadCJTasks(),
+    ]);
+
+    unpublishedMap=unpubData;
+
+    // CSフィルター
+    const mine=filterCsId
+      ?customersData.filter(c=>(c['担当CS']||'').includes(filterCsId))
+      :customersData;
+
+    // CJマップ絞り込み
+    const myIds=new Set(mine.map(c=>extractPageId(c.url)).filter(Boolean));
+    cjMap={};
+    for(const [pid,data] of Object.entries(cjData)){
+      if(myIds.has(pid)) cjMap[pid]=data;
+    }
+
+    render(mine);
+  } catch(e){
+    document.getElementById('app').innerHTML=`<div class="error-box">読み込みエラー: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function reload(){checked=loadChecked(); memos=loadMemos(); insights=loadInsights(); pins=loadPins(); unpublishedMap={}; cjMap={}; load();}
+load();
+</script>
+</body>
+</html>
