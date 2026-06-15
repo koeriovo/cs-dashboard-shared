@@ -1,0 +1,10 @@
+{
+  "name": "cs-dashboard-shared",
+  "version": "1.0.0",
+  "description": "Studio CS Weekly Dashboard - Shared Version",
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "@slack/web-api": "^7.0.0",
+    "@anthropic-ai/sdk": "^0.27.0"
+  }
+}
